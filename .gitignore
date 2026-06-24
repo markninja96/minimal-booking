@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+.env
+.env.*
+!.env.example
+.DS_Store
+AGENT.md
+npm-debug.log*
+pnpm-debug.log*
