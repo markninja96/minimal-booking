@@ -3,6 +3,7 @@ import {
   IsISO8601,
   IsString,
   IsUUID,
+  Matches,
   MinLength,
 } from 'class-validator';
 
@@ -12,6 +13,9 @@ export class CreateBookingDto {
 
   @IsString()
   @MinLength(1)
+  @Matches(/\S/, {
+    message: 'customerName must contain at least one non-whitespace character',
+  })
   customerName!: string;
 
   @IsEmail()

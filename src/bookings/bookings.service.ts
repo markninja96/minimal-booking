@@ -3,12 +3,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Booking, BookingStatus } from '@prisma/client';
+import { Booking, BookingStatus, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../database/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { PaginatedBookings } from './types/paginated-bookings.type';
+
+const OVERLAP_ERROR_MESSAGE = 'A booking overlaps with this time range';
 
 @Injectable()
 export class BookingsService {
@@ -23,29 +25,42 @@ export class BookingsService {
 
     this.validateTimeRange(startTime, endTime);
 
-    const overlappingBooking = await this.prisma.booking.findFirst({
-      where: {
-        providerId: createBookingDto.providerId,
-        status: BookingStatus.confirmed,
-        startTime: { lt: endTime },
-        endTime: { gt: startTime },
-      },
-    });
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const overlappingBooking = await tx.booking.findFirst({
+            where: {
+              providerId: createBookingDto.providerId,
+              status: BookingStatus.confirmed,
+              startTime: { lt: endTime },
+              endTime: { gt: startTime },
+            },
+          });
 
-    if (overlappingBooking) {
-      throw new BadRequestException('A booking overlaps with this time range');
+          if (overlappingBooking) {
+            throw new BadRequestException(OVERLAP_ERROR_MESSAGE);
+          }
+
+          return tx.booking.create({
+            data: {
+              providerId: createBookingDto.providerId,
+              customerName: createBookingDto.customerName,
+              customerEmail: createBookingDto.customerEmail,
+              startTime,
+              endTime,
+              status: BookingStatus.confirmed,
+            },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      if (this.isOverlapConstraintError(error)) {
+        throw new BadRequestException(OVERLAP_ERROR_MESSAGE);
+      }
+
+      throw error;
     }
-
-    return this.prisma.booking.create({
-      data: {
-        providerId: createBookingDto.providerId,
-        customerName: createBookingDto.customerName,
-        customerEmail: createBookingDto.customerEmail,
-        startTime,
-        endTime,
-        status: BookingStatus.confirmed,
-      },
-    });
   }
 
   async findById(id: string): Promise<Booking> {
@@ -67,7 +82,7 @@ export class BookingsService {
     const where =
       query.type === 'past'
         ? { endTime: { lt: now } }
-        : { startTime: { gte: now } };
+        : { endTime: { gte: now } };
 
     const [total, bookings] = await Promise.all([
       this.prisma.booking.count({ where }),
@@ -120,5 +135,19 @@ export class BookingsService {
     if (endTime <= startTime) {
       throw new BadRequestException('End time must be after start time');
     }
+  }
+
+  private isOverlapConstraintError(error: unknown): boolean {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+      return false;
+    }
+
+    return (
+      error.code === 'P2034' ||
+      (error.code === 'P2004' &&
+        String(error.meta?.database_error ?? '').includes(
+          'Booking_no_provider_overlap_excl',
+        ))
+    );
   }
 }

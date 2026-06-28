@@ -7,6 +7,7 @@ import { BookingsService } from './bookings.service';
 describe('BookingsService', () => {
   let service: BookingsService;
   let prisma: {
+    $transaction: jest.Mock;
     booking: {
       findFirst: jest.Mock;
       create: jest.Mock;
@@ -34,6 +35,7 @@ describe('BookingsService', () => {
 
   beforeEach(() => {
     prisma = {
+      $transaction: jest.fn(async (callback) => callback(prisma)),
       booking: {
         findFirst: jest.fn(),
         create: jest.fn(),
@@ -60,6 +62,9 @@ describe('BookingsService', () => {
       }),
     ).resolves.toEqual(booking);
 
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: 'Serializable',
+    });
     expect(prisma.booking.findFirst).toHaveBeenCalledWith({
       where: {
         providerId,
@@ -108,9 +113,7 @@ describe('BookingsService', () => {
         endTime: endTime.toISOString(),
       }),
     ).rejects.toThrow(
-      new BadRequestException(
-        'Provider already has a booking that overlaps this time range',
-      ),
+      new BadRequestException('A booking overlaps with this time range'),
     );
 
     expect(prisma.booking.create).not.toHaveBeenCalled();
@@ -121,6 +124,31 @@ describe('BookingsService', () => {
 
     await expect(service.findById(booking.id)).rejects.toThrow(
       new NotFoundException('Booking not found'),
+    );
+  });
+
+  it('lists upcoming bookings using bookings that have not finished', async () => {
+    prisma.booking.count.mockResolvedValue(1);
+    prisma.booking.findMany.mockResolvedValue([booking]);
+
+    await expect(
+      service.list({ type: 'upcoming', page: 1, limit: 10 }),
+    ).resolves.toEqual({
+      data: [booking],
+      meta: {
+        page: 1,
+        limit: 10,
+        total: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
+
+    expect(prisma.booking.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { endTime: { gte: expect.any(Date) } },
+      }),
     );
   });
 });

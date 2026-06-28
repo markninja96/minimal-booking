@@ -33,7 +33,7 @@ Copy `.env.example` to `.env` for local development and adjust values if needed.
 
 ```env
 PORT=3000
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/bookings
+DATABASE_URL=postgresql://postgres:postgres@localhost:5434/bookings
 TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5433/bookings_test
 ```
 
@@ -96,8 +96,8 @@ POST /bookings
   "providerId": "11111111-1111-1111-1111-111111111111",
   "customerName": "Jane Doe",
   "customerEmail": "jane@example.com",
-  "startTime": "2026-06-22T10:00:00.000Z",
-  "endTime": "2026-06-22T10:30:00.000Z"
+  "startTime": "2027-06-22T10:00:00.000Z",
+  "endTime": "2027-06-22T10:30:00.000Z"
 }
 ```
 

@@ -7,7 +7,8 @@ services:
       PORT: 3000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/bookings
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   postgres:
     image: postgres:16-alpine
@@ -19,6 +20,11 @@ services:
       POSTGRES_DB: bookings
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d bookings']
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   postgres_test:
     image: postgres:16-alpine
@@ -28,6 +34,11 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: bookings_test
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d bookings_test']
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
