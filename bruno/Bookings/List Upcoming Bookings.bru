@@ -1,0 +1,11 @@
+meta {
+  name: List Upcoming Bookings
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/bookings?type=upcoming&page=1&limit=10
+  body: none
+  auth: none
+}
