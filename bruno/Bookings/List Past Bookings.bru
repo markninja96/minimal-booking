@@ -1,0 +1,15 @@
+meta {
+  name: List Past Bookings
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/bookings?type=past&page=1&limit=10
+  body: none
+  auth: none
+}
+
+docs {
+  Past bookings cannot be created through the public API because create requests require a future start time. Use Prisma Studio or seed data to create historical records for local testing.
+}
