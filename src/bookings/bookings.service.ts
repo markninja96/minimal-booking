@@ -1,22 +1,31 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Booking, BookingStatus, Prisma } from '@prisma/client';
 
+import { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { PaginatedBookings } from './types/paginated-bookings.type';
 
 const OVERLAP_ERROR_MESSAGE = 'A booking overlaps with this time range';
+const PROVIDER_OWNERSHIP_ERROR_MESSAGE =
+  'Provider can only access their own bookings';
 
 @Injectable()
 export class BookingsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createBookingDto: CreateBookingDto): Promise<Booking> {
+  async create(
+    createBookingDto: CreateBookingDto,
+    user: AuthenticatedUser,
+  ): Promise<Booking> {
+    this.assertCanAccessProvider(createBookingDto.providerId, user);
+
     const startTime = this.parseUtcDate(
       createBookingDto.startTime,
       'startTime',
@@ -63,7 +72,7 @@ export class BookingsService {
     }
   }
 
-  async findById(id: string): Promise<Booking> {
+  async findById(id: string, user: AuthenticatedUser): Promise<Booking> {
     const booking = await this.prisma.booking.findUnique({
       where: { id },
     });
@@ -72,17 +81,26 @@ export class BookingsService {
       throw new NotFoundException('Booking not found');
     }
 
+    this.assertCanAccessProvider(booking.providerId, user);
+
     return booking;
   }
 
-  async list(query: ListBookingsQueryDto): Promise<PaginatedBookings> {
+  async list(
+    query: ListBookingsQueryDto,
+    user: AuthenticatedUser,
+  ): Promise<PaginatedBookings> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const now = new Date();
-    const where =
+    const timeFilter =
       query.type === 'past'
         ? { endTime: { lt: now } }
         : { endTime: { gte: now } };
+    const where = {
+      ...timeFilter,
+      ...(user.role === 'provider' ? { providerId: user.sub } : {}),
+    };
 
     const [total, bookings] = await Promise.all([
       this.prisma.booking.count({ where }),
@@ -134,6 +152,15 @@ export class BookingsService {
 
     if (endTime <= startTime) {
       throw new BadRequestException('End time must be after start time');
+    }
+  }
+
+  private assertCanAccessProvider(
+    providerId: string,
+    user: AuthenticatedUser,
+  ): void {
+    if (user.role === 'provider' && user.sub !== providerId) {
+      throw new ForbiddenException(PROVIDER_OWNERSHIP_ERROR_MESSAGE);
     }
   }
 

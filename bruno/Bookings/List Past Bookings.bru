@@ -10,6 +10,10 @@ get {
   auth: none
 }
 
+headers {
+  Authorization: Bearer {{providerToken}}
+}
+
 docs {
   Past bookings cannot be created through the public API because create requests require a future start time. Use Prisma Studio or seed data to create historical records for local testing.
 }

@@ -5,6 +5,7 @@
   "packageManager": "pnpm@11.0.0",
   "scripts": {
     "build": "nest build",
+    "auth:token": "ts-node -r tsconfig-paths/register scripts/generate-token.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
@@ -14,8 +15,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:studio:test": "DATABASE_URL=postgresql://postgres:postgres@localhost:5433/bookings_test prisma studio",
-    "start": "nest start",
-    "start:dev": "nest start --watch",
+    "start": "nest start -p tsconfig.build.json",
+    "start:dev": "nest start --watch -p tsconfig.build.json",
     "start:prod": "node dist/main.js",
     "test": "jest",
     "test:e2e": "jest --config ./jest-e2e.json"
@@ -24,12 +25,19 @@
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.6",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.6",
+    "@nestjs/swagger": "^11.4.4",
     "@prisma/client": "6.19.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "dotenv": "^17.4.2",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",
@@ -39,6 +47,7 @@
     "@types/express": "^5.0.3",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.16.5",
+    "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^6.0.3",
     "eslint": "^9.31.0",
     "globals": "^16.3.0",
@@ -63,6 +72,9 @@
     ],
     "rootDir": ".",
     "testRegex": "src/.*\\.spec\\.ts$",
+    "setupFiles": [
+      "<rootDir>/test/setup-env.ts"
+    ],
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },

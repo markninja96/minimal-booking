@@ -6,6 +6,7 @@ services:
     environment:
       PORT: 3000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/bookings
+      JWT_SECRET: dev-secret
     depends_on:
       postgres:
         condition: service_healthy
