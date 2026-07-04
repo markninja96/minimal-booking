@@ -35,7 +35,52 @@ Copy `.env.example` to `.env` for local development and adjust values if needed.
 PORT=3000
 DATABASE_URL=postgresql://postgres:postgres@localhost:5434/bookings
 TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5433/bookings_test
+JWT_SECRET=dev-secret
 ```
+
+## Authentication
+
+This service does not implement login or registration. JWTs are assumed to be issued by an identity provider or dedicated auth service.
+
+For local testing, generate sample JWTs:
+
+```sh
+pnpm auth:token provider
+pnpm auth:token admin
+```
+
+Use the token as a bearer token:
+
+```txt
+Authorization: Bearer <token>
+```
+
+Local demo identities:
+
+```txt
+provider:
+  sub: 499c1465-884f-4438-ab54-11e565a90c48
+  role: provider
+
+admin:
+  sub: 9cddf29f-9b5e-47ed-9bd6-8c334075067f
+  role: admin
+```
+
+Authorization rules:
+
+- provider users can create, list, and get only bookings where `providerId` equals their JWT `sub`
+- admin users can create, list, and get bookings for any provider
+
+## API Docs
+
+Swagger docs are available at:
+
+```txt
+GET /docs
+```
+
+Use the Swagger `Authorize` button to provide a bearer token.
 
 ## Database
 
@@ -157,6 +202,8 @@ Current requests include:
 - `GET /bookings?type=past&page=1&limit=10`
 
 After creating a booking, copy the response `id` into the `bookingId` environment variable to use the get-by-id request.
+
+Paste generated JWTs into the `providerToken` and `adminToken` Bruno environment variables. Keep the Bruno `providerId` value aligned with the provider JWT `sub` because existing booking requests use `{{providerId}}` and `{{providerToken}}` by default. Switch the header to `{{adminToken}}` only when testing admin access.
 
 ## Docker
 

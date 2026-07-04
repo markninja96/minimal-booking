@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Booking, BookingStatus } from '@prisma/client';
 
+import { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 import { BookingsService } from './bookings.service';
 
@@ -18,11 +19,17 @@ describe('BookingsService', () => {
   };
 
   const providerId = '499c1465-884f-4438-ab54-11e565a90c48';
+  const otherProviderId = 'e1cf3eb2-3702-4296-9436-aea369a1feca';
+  const providerUser: AuthenticatedUser = { sub: providerId, role: 'provider' };
+  const adminUser: AuthenticatedUser = {
+    sub: '9cddf29f-9b5e-47ed-9bd6-8c334075067f',
+    role: 'admin',
+  };
   const startTime = new Date(Date.now() + 60 * 60 * 1000);
   const endTime = new Date(Date.now() + 90 * 60 * 1000);
 
   const booking: Booking = {
-    id: '33333333-3333-3333-3333-333333333333',
+    id: 'e30dea06-d465-4a91-ae8a-438a5b1eef35',
     providerId,
     customerName: 'Jane Doe',
     customerEmail: 'jane@example.com',
@@ -53,13 +60,16 @@ describe('BookingsService', () => {
     prisma.booking.create.mockResolvedValue(booking);
 
     await expect(
-      service.create({
-        providerId,
-        customerName: 'Jane Doe',
-        customerEmail: 'jane@example.com',
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-      }),
+      service.create(
+        {
+          providerId,
+          customerName: 'Jane Doe',
+          customerEmail: 'jane@example.com',
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+        },
+        providerUser,
+      ),
     ).resolves.toEqual(booking);
 
     expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
@@ -87,13 +97,16 @@ describe('BookingsService', () => {
 
   it('rejects invalid time ranges', async () => {
     await expect(
-      service.create({
-        providerId,
-        customerName: 'Jane Doe',
-        customerEmail: 'jane@example.com',
-        startTime: endTime.toISOString(),
-        endTime: startTime.toISOString(),
-      }),
+      service.create(
+        {
+          providerId,
+          customerName: 'Jane Doe',
+          customerEmail: 'jane@example.com',
+          startTime: endTime.toISOString(),
+          endTime: startTime.toISOString(),
+        },
+        providerUser,
+      ),
     ).rejects.toThrow(
       new BadRequestException('End time must be after start time'),
     );
@@ -105,13 +118,16 @@ describe('BookingsService', () => {
     prisma.booking.findFirst.mockResolvedValue(booking);
 
     await expect(
-      service.create({
-        providerId,
-        customerName: 'Jane Doe',
-        customerEmail: 'jane@example.com',
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-      }),
+      service.create(
+        {
+          providerId,
+          customerName: 'Jane Doe',
+          customerEmail: 'jane@example.com',
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+        },
+        providerUser,
+      ),
     ).rejects.toThrow(
       new BadRequestException('A booking overlaps with this time range'),
     );
@@ -122,7 +138,55 @@ describe('BookingsService', () => {
   it('throws when booking is not found', async () => {
     prisma.booking.findUnique.mockResolvedValue(null);
 
-    await expect(service.findById(booking.id)).rejects.toThrow(
+    await expect(service.findById(booking.id, providerUser)).rejects.toThrow(
+      new NotFoundException('Booking not found'),
+    );
+  });
+
+  it('rejects providers creating bookings for another provider', async () => {
+    await expect(
+      service.create(
+        {
+          providerId: otherProviderId,
+          customerName: 'Jane Doe',
+          customerEmail: 'jane@example.com',
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+        },
+        providerUser,
+      ),
+    ).rejects.toThrow('Provider can only access their own bookings');
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('allows admins creating bookings for any provider', async () => {
+    const otherProviderBooking = { ...booking, providerId: otherProviderId };
+
+    prisma.booking.findFirst.mockResolvedValue(null);
+    prisma.booking.create.mockResolvedValue(otherProviderBooking);
+
+    await expect(
+      service.create(
+        {
+          providerId: otherProviderId,
+          customerName: 'Jane Doe',
+          customerEmail: 'jane@example.com',
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+        },
+        adminUser,
+      ),
+    ).resolves.toEqual(otherProviderBooking);
+  });
+
+  it('returns not found when providers fetch another provider booking', async () => {
+    prisma.booking.findUnique.mockResolvedValue({
+      ...booking,
+      providerId: otherProviderId,
+    });
+
+    await expect(service.findById(booking.id, providerUser)).rejects.toThrow(
       new NotFoundException('Booking not found'),
     );
   });
@@ -132,7 +196,7 @@ describe('BookingsService', () => {
     prisma.booking.findMany.mockResolvedValue([booking]);
 
     await expect(
-      service.list({ type: 'upcoming', page: 1, limit: 10 }),
+      service.list({ type: 'upcoming', page: 1, limit: 10 }, providerUser),
     ).resolves.toEqual({
       data: [booking],
       meta: {
@@ -144,6 +208,19 @@ describe('BookingsService', () => {
         hasPreviousPage: false,
       },
     });
+
+    expect(prisma.booking.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { endTime: { gte: expect.any(Date) }, providerId },
+      }),
+    );
+  });
+
+  it('does not provider-filter admin booking lists', async () => {
+    prisma.booking.count.mockResolvedValue(1);
+    prisma.booking.findMany.mockResolvedValue([booking]);
+
+    await service.list({ type: 'upcoming', page: 1, limit: 10 }, adminUser);
 
     expect(prisma.booking.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
