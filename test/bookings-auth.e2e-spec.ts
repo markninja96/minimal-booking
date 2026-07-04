@@ -19,6 +19,17 @@ describe('Bookings auth (e2e)', () => {
   const otherProviderId = 'e1cf3eb2-3702-4296-9436-aea369a1feca';
   const bookingId = 'e30dea06-d465-4a91-ae8a-438a5b1eef35';
   const jwtService = new JwtService({ secret: 'dev-secret' });
+  const createBooking = (bookingProviderId: string) => ({
+    id: bookingId,
+    providerId: bookingProviderId,
+    customerName: 'Jane Doe',
+    customerEmail: 'jane@example.com',
+    startTime: new Date(Date.now() + 60 * 60 * 1000),
+    endTime: new Date(Date.now() + 90 * 60 * 1000),
+    status: BookingStatus.confirmed,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
 
   beforeAll(async () => {
     prisma = {
@@ -46,6 +57,10 @@ describe('Bookings auth (e2e)', () => {
     await app.close();
   });
 
+  beforeEach(() => {
+    prisma.booking.findUnique.mockReset();
+  });
+
   it('/bookings (GET) rejects missing JWT', () => {
     return request(app.getHttpServer()).get('/bookings').expect(401);
   });
@@ -62,21 +77,42 @@ describe('Bookings auth (e2e)', () => {
   it('/bookings/:id (GET) hides another provider booking', () => {
     const token = jwtService.sign({ sub: providerId, role: 'provider' });
 
-    prisma.booking.findUnique.mockResolvedValue({
-      id: bookingId,
-      providerId: otherProviderId,
-      customerName: 'Jane Doe',
-      customerEmail: 'jane@example.com',
-      startTime: new Date(Date.now() + 60 * 60 * 1000),
-      endTime: new Date(Date.now() + 90 * 60 * 1000),
-      status: BookingStatus.confirmed,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    prisma.booking.findUnique.mockResolvedValue(createBooking(otherProviderId));
 
     return request(app.getHttpServer())
       .get(`/bookings/${bookingId}`)
       .set('Authorization', `Bearer ${token}`)
       .expect(404);
+  });
+
+  it('/bookings/:id (GET) allows providers fetching their own booking', () => {
+    const token = jwtService.sign({ sub: providerId, role: 'provider' });
+
+    prisma.booking.findUnique.mockResolvedValue(createBooking(providerId));
+
+    return request(app.getHttpServer())
+      .get(`/bookings/${bookingId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({ id: bookingId, providerId });
+      });
+  });
+
+  it('/bookings/:id (GET) allows admins fetching any provider booking', () => {
+    const token = jwtService.sign({ sub: providerId, role: 'admin' });
+
+    prisma.booking.findUnique.mockResolvedValue(createBooking(otherProviderId));
+
+    return request(app.getHttpServer())
+      .get(`/bookings/${bookingId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          id: bookingId,
+          providerId: otherProviderId,
+        });
+      });
   });
 });
