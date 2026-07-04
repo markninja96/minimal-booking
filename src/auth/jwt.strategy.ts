@@ -3,7 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
-import { AuthenticatedUser, JwtPayload } from './auth.types';
+import {
+  AuthenticatedUser,
+  JwtPayload,
+  USER_ROLES,
+  UserRole,
+} from './auth.types';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -16,13 +21,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: JwtPayload): AuthenticatedUser {
-    if (!payload.sub || !['provider', 'admin'].includes(payload.role)) {
+    if (!payload.sub || !USER_ROLES.includes(payload.role as UserRole)) {
       throw new UnauthorizedException('Missing or invalid JWT');
     }
 
     return {
       sub: payload.sub,
-      role: payload.role,
+      role: payload.role as UserRole,
     };
   }
 }

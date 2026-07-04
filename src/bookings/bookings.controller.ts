@@ -12,6 +12,7 @@ import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 
@@ -45,6 +46,22 @@ export class BookingsController {
 
   @Get()
   @ApiOkResponse({ type: PaginatedBookingsResponseDto })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: ['upcoming', 'past'],
+    schema: { default: 'upcoming' },
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    schema: { default: 1, minimum: 1 },
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    schema: { default: 10, minimum: 1, maximum: 100 },
+  })
   list(
     @Query() query: ListBookingsQueryDto,
     @CurrentUser() user: AuthenticatedUser,

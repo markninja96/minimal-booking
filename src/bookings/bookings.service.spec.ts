@@ -180,14 +180,14 @@ describe('BookingsService', () => {
     ).resolves.toEqual(otherProviderBooking);
   });
 
-  it('rejects providers fetching another provider booking', async () => {
+  it('returns not found when providers fetch another provider booking', async () => {
     prisma.booking.findUnique.mockResolvedValue({
       ...booking,
       providerId: otherProviderId,
     });
 
     await expect(service.findById(booking.id, providerUser)).rejects.toThrow(
-      'Provider can only access their own bookings',
+      new NotFoundException('Booking not found'),
     );
   });
 

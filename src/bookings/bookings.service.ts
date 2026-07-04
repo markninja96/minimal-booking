@@ -81,7 +81,9 @@ export class BookingsService {
       throw new NotFoundException('Booking not found');
     }
 
-    this.assertCanAccessProvider(booking.providerId, user);
+    if (!this.canAccessProvider(booking.providerId, user)) {
+      throw new NotFoundException('Booking not found');
+    }
 
     return booking;
   }
@@ -99,7 +101,7 @@ export class BookingsService {
         : { endTime: { gte: now } };
     const where = {
       ...timeFilter,
-      ...(user.role === 'provider' ? { providerId: user.sub } : {}),
+      ...(user.role === 'admin' ? {} : { providerId: user.sub }),
     };
 
     const [total, bookings] = await Promise.all([
@@ -159,9 +161,16 @@ export class BookingsService {
     providerId: string,
     user: AuthenticatedUser,
   ): void {
-    if (user.role === 'provider' && user.sub !== providerId) {
+    if (!this.canAccessProvider(providerId, user)) {
       throw new ForbiddenException(PROVIDER_OWNERSHIP_ERROR_MESSAGE);
     }
+  }
+
+  private canAccessProvider(
+    providerId: string,
+    user: AuthenticatedUser,
+  ): boolean {
+    return user.role === 'admin' || user.sub === providerId;
   }
 
   private isOverlapConstraintError(error: unknown): boolean {

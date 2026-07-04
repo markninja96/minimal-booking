@@ -203,7 +203,7 @@ Current requests include:
 
 After creating a booking, copy the response `id` into the `bookingId` environment variable to use the get-by-id request.
 
-Paste generated JWTs into the `providerToken` and `adminToken` Bruno environment variables. Existing booking requests use `providerToken` by default; switch the header to `{{adminToken}}` when testing admin access.
+Paste generated JWTs into the `providerToken` and `adminToken` Bruno environment variables. Keep the Bruno `providerId` value aligned with the provider JWT `sub` because existing booking requests use `{{providerId}}` and `{{providerToken}}` by default. Switch the header to `{{adminToken}}` only when testing admin access.
 
 ## Docker
 
