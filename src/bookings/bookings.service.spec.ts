@@ -4,6 +4,7 @@ import { Booking, BookingStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 import { BookingsService } from './bookings.service';
+import { BookingEventsPublisher } from './events/booking-events.publisher';
 
 describe('BookingsService', () => {
   let service: BookingsService;
@@ -16,6 +17,9 @@ describe('BookingsService', () => {
       count: jest.Mock;
       findMany: jest.Mock;
     };
+  };
+  let bookingEventsPublisher: {
+    publishCreated: jest.Mock;
   };
 
   const providerId = '499c1465-884f-4438-ab54-11e565a90c48';
@@ -52,7 +56,14 @@ describe('BookingsService', () => {
       },
     };
 
-    service = new BookingsService(prisma as unknown as PrismaService);
+    bookingEventsPublisher = {
+      publishCreated: jest.fn(),
+    };
+
+    service = new BookingsService(
+      prisma as unknown as PrismaService,
+      bookingEventsPublisher as unknown as BookingEventsPublisher,
+    );
   });
 
   it('creates a booking successfully', async () => {
@@ -93,6 +104,7 @@ describe('BookingsService', () => {
         status: BookingStatus.confirmed,
       },
     });
+    expect(bookingEventsPublisher.publishCreated).toHaveBeenCalledWith(booking);
   });
 
   it('rejects invalid time ranges', async () => {
@@ -112,6 +124,7 @@ describe('BookingsService', () => {
     );
 
     expect(prisma.booking.findFirst).not.toHaveBeenCalled();
+    expect(bookingEventsPublisher.publishCreated).not.toHaveBeenCalled();
   });
 
   it('rejects overlapping bookings', async () => {
@@ -133,6 +146,7 @@ describe('BookingsService', () => {
     );
 
     expect(prisma.booking.create).not.toHaveBeenCalled();
+    expect(bookingEventsPublisher.publishCreated).not.toHaveBeenCalled();
   });
 
   it('throws when booking is not found', async () => {

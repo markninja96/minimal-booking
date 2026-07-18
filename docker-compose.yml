@@ -7,9 +7,13 @@ services:
       PORT: 3000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/bookings
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   postgres:
     image: postgres:16-alpine
@@ -40,6 +44,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
 
 volumes:
   postgres_data:

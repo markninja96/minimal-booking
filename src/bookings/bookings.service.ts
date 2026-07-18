@@ -10,6 +10,7 @@ import { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
+import { BookingEventsPublisher } from './events/booking-events.publisher';
 import { PaginatedBookings } from './types/paginated-bookings.type';
 
 const OVERLAP_ERROR_MESSAGE = 'A booking overlaps with this time range';
@@ -18,7 +19,10 @@ const PROVIDER_OWNERSHIP_ERROR_MESSAGE =
 
 @Injectable()
 export class BookingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly bookingEventsPublisher: BookingEventsPublisher,
+  ) {}
 
   async create(
     createBookingDto: CreateBookingDto,
@@ -35,7 +39,7 @@ export class BookingsService {
     this.validateTimeRange(startTime, endTime);
 
     try {
-      return await this.prisma.$transaction(
+      const booking = await this.prisma.$transaction(
         async (tx) => {
           const overlappingBooking = await tx.booking.findFirst({
             where: {
@@ -63,6 +67,10 @@ export class BookingsService {
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
+
+      await this.bookingEventsPublisher.publishCreated(booking);
+
+      return booking;
     } catch (error) {
       if (this.isOverlapConstraintError(error)) {
         throw new BadRequestException(OVERLAP_ERROR_MESSAGE);

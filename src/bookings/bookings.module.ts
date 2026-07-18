@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
 
+import { RedisModule } from '../redis/redis.module';
 import { BookingsController } from './bookings.controller';
 import { BookingsService } from './bookings.service';
+import { BookingEventsPublisher } from './events/booking-events.publisher';
 
 @Module({
+  imports: [RedisModule],
   controllers: [BookingsController],
-  providers: [BookingsService],
+  providers: [BookingsService, BookingEventsPublisher],
 })
 export class BookingsModule {}
