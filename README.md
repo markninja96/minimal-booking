@@ -36,6 +36,8 @@ PORT=3000
 DATABASE_URL=postgresql://postgres:postgres@localhost:5434/bookings
 TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5433/bookings_test
 JWT_SECRET=dev-secret
+REDIS_HOST=localhost
+REDIS_PORT=6379
 ```
 
 ## Authentication
@@ -46,6 +48,7 @@ For local testing, generate sample JWTs:
 
 ```sh
 pnpm auth:token provider
+pnpm auth:token other-provider
 pnpm auth:token admin
 ```
 
@@ -60,6 +63,10 @@ Local demo identities:
 ```txt
 provider:
   sub: 499c1465-884f-4438-ab54-11e565a90c48
+  role: provider
+
+other-provider:
+  sub: e1cf3eb2-3702-4296-9436-aea369a1feca
   role: provider
 
 admin:
@@ -84,10 +91,10 @@ Use the Swagger `Authorize` button to provide a bearer token.
 
 ## Database
 
-Start PostgreSQL:
+Start PostgreSQL and Redis:
 
 ```sh
-docker compose up -d postgres postgres_test
+docker compose up -d postgres postgres_test redis
 ```
 
 Run migrations:
@@ -181,7 +188,53 @@ Rules:
 - `startTime` must be in the future
 - `endTime` must be after `startTime`
 - overlapping confirmed bookings for the same provider are rejected
-- auth and provider ownership checks are intentionally added in the next milestone
+- provider users can only create bookings for their own provider ID
+- admin users can create bookings for any provider
+
+Creating a booking publishes a `booking.created` event to Redis after the database write succeeds.
+
+## WebSockets
+
+Authenticated Socket.IO clients can receive `booking.created` events.
+
+```ts
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:3000', {
+  auth: {
+    token: '<jwt>',
+  },
+});
+
+socket.on('booking.created', (booking) => {
+  console.log(booking);
+});
+```
+
+Broadcast rules:
+
+- provider sockets join `provider:{sub}` and receive only their own provider's bookings
+- admin sockets join `admins` and receive all booking-created events
+- unauthenticated sockets are disconnected
+
+Run the local interactive WebSocket smoke test after PostgreSQL, Redis, and the app are running:
+
+```sh
+docker compose up -d postgres redis
+pnpm prisma:migrate
+pnpm start:dev
+pnpm websocket:smoke
+```
+
+The smoke test creates real Socket.IO clients for a provider, another provider, and an admin. It prints the expected server rooms and provider IDs to use in Bruno or Swagger, and keeps listening for live `booking.created` events until you stop it with `Ctrl+C`.
+
+While the script is running, create bookings through Bruno or Swagger to confirm:
+
+- provider sockets receive only their own provider's bookings
+- admin sockets receive all booking-created events
+- the unrelated provider socket does not receive events for the primary provider
+
+If a REST request fails in Bruno or Swagger, for example because the bearer token is mistyped, the smoke script will not log anything for that request. Failed booking requests do not publish `booking.created`, so there is no Redis/WebSocket event to receive.
 
 ## API Client
 
@@ -208,5 +261,5 @@ Paste generated JWTs into the `providerToken` and `adminToken` Bruno environment
 ## Docker
 
 ```sh
-docker compose up --build
+JWT_SECRET=dev-secret docker compose up --build
 ```
