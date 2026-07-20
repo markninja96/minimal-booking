@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
@@ -6,6 +6,7 @@ type RedisMessageHandler = (message: string) => void | Promise<void>;
 
 @Injectable()
 export class RedisService implements OnModuleDestroy {
+  private readonly logger = new Logger(RedisService.name);
   private readonly enabled: boolean;
   private readonly publisher?: Redis;
   private readonly subscriber?: Redis;
@@ -40,9 +41,18 @@ export class RedisService implements OnModuleDestroy {
       return;
     }
 
-    this.subscriber.on('message', (receivedChannel, message) => {
-      if (receivedChannel === channel) {
-        void handler(message);
+    this.subscriber.on('message', async (receivedChannel, message) => {
+      if (receivedChannel !== channel) {
+        return;
+      }
+
+      try {
+        await handler(message);
+      } catch (error) {
+        this.logger.error(
+          `Redis message handler failed for channel ${channel}`,
+          error instanceof Error ? error.stack : String(error),
+        );
       }
     });
 

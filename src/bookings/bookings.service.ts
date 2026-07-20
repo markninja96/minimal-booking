@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Booking, BookingStatus, Prisma } from '@prisma/client';
@@ -19,6 +20,8 @@ const PROVIDER_OWNERSHIP_ERROR_MESSAGE =
 
 @Injectable()
 export class BookingsService {
+  private readonly logger = new Logger(BookingsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly bookingEventsPublisher: BookingEventsPublisher,
@@ -68,7 +71,14 @@ export class BookingsService {
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
 
-      await this.bookingEventsPublisher.publishCreated(booking);
+      try {
+        await this.bookingEventsPublisher.publishCreated(booking);
+      } catch (error) {
+        this.logger.error(
+          `Failed to publish booking.created event for booking ${booking.id}`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
 
       return booking;
     } catch (error) {

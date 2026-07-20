@@ -83,7 +83,13 @@ export class BookingsGateway implements OnGatewayConnection {
     message: string,
   ): BookingCreatedEvent | null {
     try {
-      const event = JSON.parse(message) as Partial<BookingCreatedEvent>;
+      const parsedEvent = JSON.parse(message) as unknown;
+
+      if (typeof parsedEvent !== 'object' || parsedEvent === null) {
+        return null;
+      }
+
+      const event = parsedEvent as Partial<BookingCreatedEvent>;
 
       if (
         typeof event.id !== 'string' ||
