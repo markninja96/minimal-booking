@@ -37,19 +37,22 @@ export class ReminderJobsService implements OnModuleDestroy {
       return;
     }
 
-    const connection = {
+    const queueConnection = {
       host: configService.get<string>('REDIS_HOST') ?? 'localhost',
-      maxRetriesPerRequest: null,
       port: Number(configService.get<string>('REDIS_PORT') ?? 6379),
+    };
+    const workerConnection = {
+      ...queueConnection,
+      maxRetriesPerRequest: null,
     };
 
     this.queue = new Queue<ReminderJobData>(REMINDER_QUEUE_NAME, {
-      connection,
+      connection: queueConnection,
     });
     this.worker = new Worker<ReminderJobData>(
       REMINDER_QUEUE_NAME,
       (job) => this.processReminder(job),
-      { connection },
+      { connection: workerConnection },
     );
 
     this.worker.on('failed', (job, error) => {
@@ -91,7 +94,10 @@ export class ReminderJobsService implements OnModuleDestroy {
     this.logger.log(
       JSON.stringify({
         event: REMINDER_JOB_NAME,
-        ...job.data,
+        bookingId: job.data.bookingId,
+        providerId: job.data.providerId,
+        startTime: job.data.startTime,
+        endTime: job.data.endTime,
       }),
     );
   }
