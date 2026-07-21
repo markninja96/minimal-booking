@@ -36,6 +36,7 @@ PORT=3000
 DATABASE_URL=postgresql://postgres:postgres@localhost:5434/bookings
 TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5433/bookings_test
 JWT_SECRET=dev-secret
+REDIS_ENABLED=true
 REDIS_HOST=localhost
 REDIS_PORT=6379
 ```
@@ -192,6 +193,17 @@ Rules:
 - admin users can create bookings for any provider
 
 Creating a booking publishes a `booking.created` event to Redis after the database write succeeds.
+
+## Background Jobs
+
+Creating a booking also enqueues a BullMQ reminder job after the database write succeeds.
+
+Reminder rules:
+
+- reminder jobs are scheduled for 10 minutes before `startTime`
+- bookings starting in less than 10 minutes get a zero-delay reminder job
+- the worker logs a structured reminder payload instead of sending email, SMS, or push notifications
+- Redis-backed events and jobs can be disabled locally with `REDIS_ENABLED=false`
 
 ## WebSockets
 

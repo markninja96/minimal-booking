@@ -3,6 +3,7 @@ import { Booking, BookingStatus } from '@prisma/client';
 
 import { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
+import { ReminderJobsService } from '../jobs/reminder-jobs.service';
 import { BookingsService } from './bookings.service';
 import { BookingEventsPublisher } from './events/booking-events.publisher';
 
@@ -20,6 +21,9 @@ describe('BookingsService', () => {
   };
   let bookingEventsPublisher: {
     publishCreated: jest.Mock;
+  };
+  let reminderJobs: {
+    scheduleBookingReminder: jest.Mock;
   };
 
   const providerId = '499c1465-884f-4438-ab54-11e565a90c48';
@@ -59,10 +63,14 @@ describe('BookingsService', () => {
     bookingEventsPublisher = {
       publishCreated: jest.fn(),
     };
+    reminderJobs = {
+      scheduleBookingReminder: jest.fn(),
+    };
 
     service = new BookingsService(
       prisma as unknown as PrismaService,
       bookingEventsPublisher as unknown as BookingEventsPublisher,
+      reminderJobs as unknown as ReminderJobsService,
     );
   });
 
@@ -105,6 +113,7 @@ describe('BookingsService', () => {
       },
     });
     expect(bookingEventsPublisher.publishCreated).toHaveBeenCalledWith(booking);
+    expect(reminderJobs.scheduleBookingReminder).toHaveBeenCalledWith(booking);
   });
 
   it('rejects invalid time ranges', async () => {
@@ -125,6 +134,7 @@ describe('BookingsService', () => {
 
     expect(prisma.booking.findFirst).not.toHaveBeenCalled();
     expect(bookingEventsPublisher.publishCreated).not.toHaveBeenCalled();
+    expect(reminderJobs.scheduleBookingReminder).not.toHaveBeenCalled();
   });
 
   it('rejects overlapping bookings', async () => {
@@ -147,6 +157,7 @@ describe('BookingsService', () => {
 
     expect(prisma.booking.create).not.toHaveBeenCalled();
     expect(bookingEventsPublisher.publishCreated).not.toHaveBeenCalled();
+    expect(reminderJobs.scheduleBookingReminder).not.toHaveBeenCalled();
   });
 
   it('throws when booking is not found', async () => {
