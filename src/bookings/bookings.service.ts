@@ -9,6 +9,7 @@ import { Booking, BookingStatus, Prisma } from '@prisma/client';
 
 import { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
+import { ReminderJobsService } from '../jobs/reminder-jobs.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { BookingEventsPublisher } from './events/booking-events.publisher';
@@ -25,6 +26,7 @@ export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly bookingEventsPublisher: BookingEventsPublisher,
+    private readonly reminderJobs: ReminderJobsService,
   ) {}
 
   async create(
@@ -76,6 +78,15 @@ export class BookingsService {
       } catch (error) {
         this.logger.error(
           `Failed to publish booking.created event for booking ${booking.id}`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+
+      try {
+        await this.reminderJobs.scheduleBookingReminder(booking);
+      } catch (error) {
+        this.logger.error(
+          `Failed to schedule reminder job for booking ${booking.id}`,
           error instanceof Error ? error.stack : String(error),
         );
       }
