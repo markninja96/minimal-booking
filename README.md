@@ -2,14 +2,6 @@
 
 NestJS booking microservice built incrementally through focused milestones.
 
-## PR 1: Project Bootstrap
-
-This first milestone includes the application scaffold, tooling, CI, Docker skeleton, and a basic health endpoint.
-
-## PR 2: Database And Booking Core
-
-This milestone adds PostgreSQL persistence with Prisma and the core booking REST API.
-
 ## Requirements
 
 - Node.js 22 LTS
@@ -135,6 +127,23 @@ Response:
   "status": "ok"
 }
 ```
+
+## Metrics
+
+```txt
+GET /metrics
+```
+
+Response:
+
+```json
+{
+  "bookingsCreated": 0,
+  "uptimeSeconds": 120
+}
+```
+
+`bookingsCreated` is read from PostgreSQL and reflects persisted bookings. Failed validation, authorization, and overlap attempts do not create rows and are not counted. Redis publish or reminder scheduling failures can still occur after the booking row is committed, so those persisted bookings remain counted.
 
 ## Booking API
 
@@ -269,6 +278,24 @@ Current requests include:
 After creating a booking, copy the response `id` into the `bookingId` environment variable to use the get-by-id request.
 
 Paste generated JWTs into the `providerToken` and `adminToken` Bruno environment variables. Keep the Bruno `providerId` value aligned with the provider JWT `sub` because existing booking requests use `{{providerId}}` and `{{providerToken}}` by default. Switch the header to `{{adminToken}}` only when testing admin access.
+
+## Tests
+
+Unit tests run without external services:
+
+```sh
+pnpm test
+```
+
+E2E tests use the dedicated PostgreSQL test database and disable Redis-backed events/jobs through test setup:
+
+```sh
+docker compose up -d postgres_test
+DATABASE_URL=postgresql://postgres:postgres@localhost:5433/bookings_test pnpm prisma:deploy
+pnpm test:e2e
+```
+
+The booking e2e happy path creates a booking with a provider JWT, fetches it by ID, and verifies `/metrics` reports the created booking.
 
 ## Docker
 
