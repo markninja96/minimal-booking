@@ -9,14 +9,12 @@ export type MetricsSnapshot = {
 
 @Injectable()
 export class MetricsService {
-  private readonly startedAt = Date.now();
-
   constructor(private readonly prisma: PrismaService) {}
 
   async getMetrics(): Promise<MetricsSnapshot> {
     return {
       bookingsCreated: await this.prisma.booking.count(),
-      uptimeSeconds: Math.floor((Date.now() - this.startedAt) / 1000),
+      uptimeSeconds: Math.floor(process.uptime()),
     };
   }
 }

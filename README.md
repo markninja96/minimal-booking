@@ -2,18 +2,6 @@
 
 NestJS booking microservice built incrementally through focused milestones.
 
-## PR 1: Project Bootstrap
-
-This first milestone includes the application scaffold, tooling, CI, Docker skeleton, and a basic health endpoint.
-
-## PR 2: Database And Booking Core
-
-This milestone adds PostgreSQL persistence with Prisma and the core booking REST API.
-
-## PR 6: Metrics And E2E Tests
-
-This milestone adds basic JSON metrics and a database-backed e2e happy path for creating and fetching bookings.
-
 ## Requirements
 
 - Node.js 22 LTS
@@ -155,7 +143,7 @@ Response:
 }
 ```
 
-`bookingsCreated` is read from PostgreSQL and reflects persisted bookings. Failed validation, authorization, overlap, Redis publish, or reminder scheduling attempts do not create rows and are not counted.
+`bookingsCreated` is read from PostgreSQL and reflects persisted bookings. Failed validation, authorization, and overlap attempts do not create rows and are not counted. Redis publish or reminder scheduling failures can still occur after the booking row is committed, so those persisted bookings remain counted.
 
 ## Booking API
 
