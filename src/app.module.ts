@@ -5,7 +5,6 @@ import { AuthModule } from './auth/auth.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
-import { MetricsModule } from './metrics/metrics.module';
 import { WebsocketModule } from './websocket/websocket.module';
 
 @Module({
@@ -14,7 +13,6 @@ import { WebsocketModule } from './websocket/websocket.module';
     AuthModule,
     DatabaseModule,
     HealthModule,
-    MetricsModule,
     BookingsModule,
     WebsocketModule,
   ],
