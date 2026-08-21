@@ -21,8 +21,8 @@ Request flow:
 REST/gRPC request
 -> BookingsService
 -> PostgreSQL write
--> Redis publish booking.created
--> BullMQ reminder job scheduled 10 minutes before start
+-> Redis publish booking.created when REDIS_ENABLED=true
+-> BullMQ reminder job scheduled 10 minutes before start when REDIS_ENABLED=true
 -> WebSocket gateway broadcasts booking.created to authorized provider/admin rooms
 ```
 
@@ -68,7 +68,7 @@ Example values:
 PORT=3000
 DATABASE_URL=postgresql://postgres:postgres@localhost:5434/bookings
 TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5433/bookings_test
-GRPC_URL=0.0.0.0:50051
+GRPC_URL=127.0.0.1:50051
 JWT_SECRET=dev-secret
 REDIS_ENABLED=true
 REDIS_HOST=localhost
@@ -80,7 +80,7 @@ Environment variables:
 - `PORT`: HTTP server port. Defaults to `3000`.
 - `DATABASE_URL`: Prisma connection string for the local app database.
 - `TEST_DATABASE_URL`: Prisma connection string for e2e tests.
-- `GRPC_URL`: gRPC bind address. Defaults to `0.0.0.0:50051`.
+- `GRPC_URL`: gRPC bind address. Defaults to `127.0.0.1:50051`.
 - `JWT_SECRET`: secret used to validate local sample JWTs.
 - `REDIS_ENABLED`: set to `false` to disable Redis-backed events and jobs in local/test runs.
 - `REDIS_HOST`: Redis hostname.
@@ -361,7 +361,7 @@ Reminder rules:
 
 ## gRPC
 
-The app exposes an internal unauthenticated gRPC `CreateBooking` method on `GRPC_URL`, defaulting to `0.0.0.0:50051`. Docker Compose binds the gRPC port to `127.0.0.1:50051` for local testing only; non-local deployments should keep gRPC on private networking or add authenticated TLS protection.
+The app exposes an internal unauthenticated gRPC `CreateBooking` method on `GRPC_URL`, defaulting to `127.0.0.1:50051`. Docker Compose binds the gRPC port to `127.0.0.1:50051` for local testing only; non-local deployments should keep gRPC on private networking or add authenticated TLS protection.
 
 The gRPC method calls the same booking creation service used by REST, so persisted gRPC bookings use the same time validation, overlap prevention, Redis event publishing, reminder scheduling, and metrics behavior.
 
