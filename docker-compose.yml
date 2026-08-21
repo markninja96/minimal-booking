@@ -3,9 +3,11 @@ services:
     build: .
     ports:
       - '3000:3000'
+      - '50051:50051'
     environment:
       PORT: 3000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/bookings
+      GRPC_URL: 0.0.0.0:50051
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       REDIS_HOST: redis
       REDIS_PORT: 6379

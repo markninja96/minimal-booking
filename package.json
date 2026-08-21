@@ -23,10 +23,13 @@
     "websocket:smoke": "ts-node -r tsconfig-paths/register scripts/websocket-smoke.ts"
   },
   "dependencies": {
+    "@grpc/grpc-js": "^1.14.4",
+    "@grpc/proto-loader": "^0.8.1",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.6",
     "@nestjs/jwt": "^11.0.2",
+    "@nestjs/microservices": "^11.2.1",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.6",
     "@nestjs/platform-socket.io": "^11.1.27",

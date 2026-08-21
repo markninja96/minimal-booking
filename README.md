@@ -27,6 +27,7 @@ Copy `.env.example` to `.env` for local development and adjust values if needed.
 PORT=3000
 DATABASE_URL=postgresql://postgres:postgres@localhost:5434/bookings
 TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5433/bookings_test
+GRPC_URL=0.0.0.0:50051
 JWT_SECRET=dev-secret
 REDIS_ENABLED=true
 REDIS_HOST=localhost
@@ -202,6 +203,28 @@ Rules:
 - admin users can create bookings for any provider
 
 Creating a booking publishes a `booking.created` event to Redis after the database write succeeds.
+
+## gRPC
+
+The app also exposes an internal unauthenticated gRPC `CreateBooking` method on `GRPC_URL`, defaulting to `0.0.0.0:50051`.
+
+The gRPC method calls the same booking creation service used by REST, so persisted gRPC bookings use the same time validation, overlap prevention, Redis event publishing, reminder scheduling, and metrics behavior.
+
+Test it locally with `grpcurl` after PostgreSQL, Redis, and the app are running:
+
+```sh
+grpcurl -plaintext \
+  -import-path proto \
+  -proto bookings.proto \
+  -d '{
+    "providerId": "499c1465-884f-4438-ab54-11e565a90c48",
+    "customerName": "Jane Doe",
+    "customerEmail": "jane@example.com",
+    "startTime": "2027-06-22T10:00:00.000Z",
+    "endTime": "2027-06-22T10:30:00.000Z"
+  }' \
+  localhost:50051 bookings.BookingsService/CreateBooking
+```
 
 ## Background Jobs
 
