@@ -4,4 +4,5 @@ allowBuilds:
   '@scarf/scarf': false
   msgpackr-extract: false
   prisma: true
+  protobufjs: false
   unrs-resolver: true

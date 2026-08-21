@@ -10,5 +10,6 @@ import { BookingEventsPublisher } from './events/booking-events.publisher';
   imports: [JobsModule, RedisModule],
   controllers: [BookingsController],
   providers: [BookingsService, BookingEventsPublisher],
+  exports: [BookingsService],
 })
 export class BookingsModule {}

@@ -1,6 +1,8 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { join } from 'node:path';
 
 import { AppModule } from './app.module';
 
@@ -30,8 +32,18 @@ async function bootstrap(): Promise<void> {
     SwaggerModule.setup('docs', app, swaggerDocument);
   }
 
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.GRPC,
+    options: {
+      package: 'bookings',
+      protoPath: join(process.cwd(), 'proto/bookings.proto'),
+      url: process.env.GRPC_URL ?? '0.0.0.0:50051',
+    },
+  });
+
   const port = process.env.PORT ?? 3000;
 
+  await app.startAllMicroservices();
   await app.listen(port);
 }
 
