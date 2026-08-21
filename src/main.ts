@@ -37,7 +37,7 @@ async function bootstrap(): Promise<void> {
     options: {
       package: 'bookings',
       protoPath: join(process.cwd(), 'proto/bookings.proto'),
-      url: process.env.GRPC_URL ?? '0.0.0.0:50051',
+      url: process.env.GRPC_URL ?? '127.0.0.1:50051',
     },
   });
 
