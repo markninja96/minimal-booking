@@ -206,7 +206,7 @@ Creating a booking publishes a `booking.created` event to Redis after the databa
 
 ## gRPC
 
-The app also exposes an internal unauthenticated gRPC `CreateBooking` method on `GRPC_URL`, defaulting to `0.0.0.0:50051`.
+The app also exposes an internal unauthenticated gRPC `CreateBooking` method on `GRPC_URL`, defaulting to `0.0.0.0:50051`. Docker Compose binds the gRPC port to `127.0.0.1:50051` for local testing only; non-local deployments should keep gRPC on private networking or add authenticated TLS protection.
 
 The gRPC method calls the same booking creation service used by REST, so persisted gRPC bookings use the same time validation, overlap prevention, Redis event publishing, reminder scheduling, and metrics behavior.
 
